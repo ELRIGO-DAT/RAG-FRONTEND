@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RAG Demo</title>
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 16px}
+    textarea, input, button{width:100%;padding:10px;margin:8px 0;font-size:16px}
+    button{cursor:pointer}
+    .row{display:grid;grid-template-columns:1fr 160px;gap:8px}
+    .src{white-space:pre-wrap;background:#f6f6f6;border-radius:8px;padding:8px;margin:8px 0}
+    .muted{color:#666;font-size:14px}
+  </style>
+</head>
+<body>
+  <h1>RAG Demo</h1>
+
+  <label>Pregunta</label>
+  <textarea id="question" rows="3" placeholder="¿Qué dice el documento sobre ...?"></textarea>
+
+  <div class="row">
+    <input id="docId" placeholder="doc_id (opcional; pega UUID de documents.id)" />
+    <input id="topK" type="number" min="1" max="10" value="5" />
+  </div>
+
+  <button id="ask">Preguntar</button>
+
+  <h2>Respuesta</h2>
+  <div id="answer" class="src">—</div>
+
+  <h3>Fragmentos usados</h3>
+  <div id="matches"></div>
+
+  <p class="muted">Consejo: si no ves buenos resultados, ingesta más texto y sube <em>topK</em>.</p>
+
+  <script>
+    const BACKEND = "https://RAG-FRONTEND/index.html"; // <- reemplaza por tu URL de Render (ej. https://rag-backend-7ku4.onrender.com)
+    const $q = (s)=>document.querySelector(s);
+
+    $q("#ask").onclick = async () => {
+      const question = $q("#question").value.trim();
+      const topK = Number($q("#topK").value || 5);
+      const doc_id = $q("#docId").value.trim() || undefined;
+
+      if (!question) {
+        $q("#answer").textContent = "Escribe una pregunta.";
+        return;
+      }
+
+      $q("#answer").textContent = "Consultando...";
+      $q("#matches").innerHTML = "";
+
+      try {
+        const res = await fetch(`${BACKEND}/api/answer`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, topK, doc_id })
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          $q("#answer").textContent = `Error: ${data.error || res.status}`;
+          return;
+        }
+
+        $q("#answer").textContent = data.answer || "(Sin respuesta)";
+
+        // Render de fragmentos
+        const wrap = document.createDocumentFragment();
+        (data.used?.matches || []).forEach((m, i) => {
+          const div = document.createElement("div");
+          div.className = "src";
+          div.innerHTML =
+            `<strong>#${i+1}</strong> similitud: ${(m.similarity ?? 0).toFixed(3)}<br>` +
+            `<small>doc_id: ${m.doc_id || "-"}</small><br><br>` +
+            `${m.content}`;
+          wrap.appendChild(div);
+        });
+        $q("#matches").appendChild(wrap);
+      } catch (e) {
+        $q("#answer").textContent = "Error de red o CORS.";
+      }
+    };
+  </script>
+</body>
+</html>
