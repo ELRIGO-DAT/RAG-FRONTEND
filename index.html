@@ -57,7 +57,7 @@
         const res = await fetch(`${BACKEND}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question }) // hoy tu backend espera { question }
+          body: JSON.stringify({ question,topk, doc_id }) // ahora si mandas topk y doc_id
         });
 
         const data = await res.json();
