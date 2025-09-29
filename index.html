@@ -24,6 +24,7 @@
     <input id="topK" type="number" min="1" max="10" value="5" />
   </div>
 
+  <!-- 👇 Asegúrate de ver este BOTÓN en la página -->
   <button id="ask">Preguntar</button>
 
   <h2>Respuesta</h2>
@@ -35,7 +36,7 @@
   <p class="muted">Consejo: si no ves buenos resultados, ingesta más texto y sube <em>topK</em>.</p>
 
   <script>
-    const BACKEND = "https://rag-backend-7ku4.onrender.com"; // ← pon aquí tu URL real de Render
+    const BACKEND = "https://rag-backend-7ku4.onrender.com"; // ← tu URL de Render
 
     const $q = (s)=>document.querySelector(s);
 
@@ -56,8 +57,7 @@
         const res = await fetch(`${BACKEND}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          // hoy tu backend espera { question } (topK/doc_id se usan cuando activemos RAG)
-          body: JSON.stringify({ question })
+          body: JSON.stringify({ question }) // hoy tu backend espera { question }
         });
 
         const data = await res.json();
@@ -68,27 +68,6 @@
 
         $q("#answer").textContent = data.answer || "(Sin respuesta)";
 
-        // Aún no hay fragmentos hasta activar RAG en backend.
         const matches = data?.used?.matches || [];
         if (matches.length) {
           const wrap = document.createDocumentFragment();
-          matches.forEach((m, i) => {
-            const div = document.createElement("div");
-            div.className = "src";
-            div.innerHTML =
-              `<strong>#${i+1}</strong> similitud: ${(m.similarity ?? 0).toFixed(3)}<br>` +
-              `<small>doc_id: ${m.doc_id || "-"}</small><br><br>` +
-              `${m.content}`;
-            wrap.appendChild(div);
-          });
-          $q("#matches").appendChild(wrap);
-        } else {
-          $q("#matches").innerHTML = "<div class='muted'>Fragmentos: (pendiente de activar RAG)</div>";
-        }
-      } catch (e) {
-        $q("#answer").textContent = "Error de red o CORS.";
-      }
-    };
-  </script>
-</body>
-</html>
