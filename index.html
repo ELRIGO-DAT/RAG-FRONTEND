@@ -36,38 +36,61 @@
   <p class="muted">Consejo: si no ves buenos resultados, ingesta más texto y sube <em>topK</em>.</p>
 
   <script>
-    const BACKEND = "https://rag-backend-7ku4.onrender.com"; // ← tu URL de Render
+document.addEventListener("DOMContentLoaded", () => {
+  const BACKEND = "https://rag-backend-7ku4.onrender.com"; // tu URL de Render
 
-    const $q = (s)=>document.querySelector(s);
+  const $q = (s)=>document.querySelector(s);
+  const askBtn = $q("#ask");
+  if (!askBtn) return; // por si no existe el botón
 
-    $q("#ask").onclick = async () => {
-      const question = $q("#question").value.trim();
-      const topK = Number($q("#topK").value || 5); // reservado para cuando activemos RAG
-      const doc_id = $q("#docId").value.trim() || undefined;
+  askBtn.addEventListener("click", async () => {
+    const question = $q("#question").value.trim();
+    const topK = Number($q("#topK").value || 5);
+    const doc_id = $q("#docId").value.trim() || undefined;
 
-      if (!question) {
-        $q("#answer").textContent = "Escribe una pregunta.";
+    if (!question) {
+      $q("#answer").textContent = "Escribe una pregunta.";
+      return;
+    }
+
+    $q("#answer").textContent = "Consultando...";
+    $q("#matches").innerHTML = "";
+
+    try {
+      const res = await fetch(`${BACKEND}/api/answer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, topK, doc_id })
+      });
+
+      const data = await res.json();
+      if (!res.ok || data?.ok === false) {
+        $q("#answer").textContent = `Error: ${data?.error || res.status}`;
         return;
       }
 
-      $q("#answer").textContent = "Consultando...";
-      $q("#matches").innerHTML = "";
+      $q("#answer").textContent = data.answer || "(Sin respuesta)";
 
-      try {
-        const res = await fetch(`${BACKEND}/api/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question,topk, doc_id }) // ahora si mandas topk y doc_id
+      const matches = data?.used?.matches || [];
+      if (matches.length) {
+        const wrap = document.createDocumentFragment();
+        matches.forEach((m, i) => {
+          const div = document.createElement("div");
+          div.className = "src";
+          div.innerHTML =
+            `<strong>#${i+1}</strong> similitud: ${(m.similarity ?? 0).toFixed(3)}<br>` +
+            `<small>doc_id: ${m.doc_id || "-"}</small><br><br>` +
+            `${m.content}`;
+          wrap.appendChild(div);
         });
-
-        const data = await res.json();
-        if (!res.ok || data?.ok === false) {
-          $q("#answer").textContent = `Error: ${data?.error || res.status}`;
-          return;
-        }
-
-        $q("#answer").textContent = data.answer || "(Sin respuesta)";
-
-        const matches = data?.used?.matches || [];
-        if (matches.length) {
-          const wrap = document.createDocumentFragment();
+        $q("#matches").appendChild(wrap);
+      } else {
+        $q("#matches").innerHTML =
+          "<div class='muted'>Fragmentos: (sin matches o pendiente de activar/ingestar más)</div>";
+      }
+    } catch (e) {
+      $q("#answer").textContent = "Error de red o CORS.";
+    }
+  });
+});
+</script>
